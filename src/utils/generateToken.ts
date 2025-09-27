@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import prisma from "../config/dbconfig";
 
 type TokenType = "accessToken" | "refreshToken";
 
@@ -20,3 +21,17 @@ export const generateToken = (
     });
   });
 };
+
+export const updateAccessToken = async (
+  userId: string,
+  accessToken: string
+): Promise<void> => {
+  await prisma.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      accessToken,
+    },
+  });
+}

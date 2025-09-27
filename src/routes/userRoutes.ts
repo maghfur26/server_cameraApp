@@ -6,7 +6,7 @@ import { AuthMiddleware } from "../middleware/auth";
 const userRoutes = Router();
 
 // public routes
-userRoutes.post("/login", validateLogin, UserController.login);
+userRoutes.post("/auth/login", validateLogin, UserController.login);
 userRoutes.get("/users", UserController.getAllUsers);
 
 // protected routes
@@ -19,10 +19,12 @@ userRoutes.post(
   validateCreateUser,
   UserController.createUser
 );
-// userRoutes.post(
-//   "delete-user",
-//   AuthMiddleware.adminOnly,
-//   UserController.deleteUser
-// )
+userRoutes.post(
+  "/delete-user",
+  AuthMiddleware.adminOnly,
+  UserController.deleteUser
+)
+
+userRoutes.post("/auth/update-token", AuthMiddleware.adminOnly, UserController.updateToken);
 
 export default userRoutes;

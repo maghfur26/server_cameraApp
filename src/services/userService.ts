@@ -1,6 +1,7 @@
 import prisma from "../config/dbconfig";
 import bcrypt from "bcrypt";
-import { generateToken } from "../utils/generateToken";
+import jwt from "jsonwebtoken";
+import { generateToken, updateAccessToken } from "../utils/generateToken";
 import type {
   CreateUser,
   LoginUser,
@@ -22,6 +23,26 @@ export class UserService {
         role: true,
       },
     });
+
+    return user;
+  }
+
+  static async getUser(userId: string): Promise<UserResponse> {
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        userName: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error("USER_NOT_FOUND");
+    }
 
     return user;
   }
@@ -122,11 +143,53 @@ export class UserService {
     });
   }
 
-  static async deleteUser(userId: string) {
+  static async deleteUser(email: string) {
     await prisma.user.delete({
       where: {
-        id: userId,
+        id: email,
       },
     });
+  }
+
+  static async updateToken(refreshToken: string) {
+    if (!refreshToken) {
+      throw new Error("REFRESH_TOKEN_NOT_FOUND");
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { refreshToken },
+    });
+
+    if (!user) {
+      throw new Error("INVALID_REFRESH_TOKEN");
+    }
+
+    try {
+      const decoded: any = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET || "refresh-secret"
+      );
+
+      const payload = {
+        id: user.id,
+        email: user.email,
+        userName: user.userName,
+        role: user.role,
+      };
+
+      const newAccessToken = await generateToken("accessToken", payload);
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { accessToken: newAccessToken },
+      });
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken,
+      };
+    } catch (err) {
+      throw new Error("INVALID_REFRESH_TOKEN");
+    }
   }
 }

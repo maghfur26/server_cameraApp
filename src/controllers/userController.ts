@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { UserService } from "../services/userService";
 import { handleServiceError } from "../utils/errorHandler";
 import type { CreateUser, LoginUser } from "../types/user.types";
-import prisma from "../config/dbconfig";
 
 export class UserController {
   static async getAllUsers(req: Request, res: Response) {
@@ -99,15 +98,59 @@ export class UserController {
     }
   }
 
-  // static async deleteUser(req: Request, res: Response) {
-  //   try {
-  //     const user = await prisma.user.findUnique({
-  //       where: {
-          
-  //       }
-  //     })
-  //   } catch (error) {
-      
-  //   }
-  // }
+  static async deleteUser(req: Request, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authenticaion required",
+        });
+      }
+
+      const user = await UserService.deleteUser(req.user.id);
+
+      return res.status(200).json({
+        success: true,
+        message: "User deleted successfully",
+        data: user,
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      const appError = handleServiceError(error as Error);
+
+      return res.status(appError.statusCode).json({
+        success: false,
+        message: appError.message,
+      });
+    }
+  }
+
+  static async updateToken(req: Request, res: Response) {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        return res.status(401).json({
+          success: false,
+          message: "Refresh token required",
+        });
+      }
+
+      const newTokens = await UserService.updateToken(refreshToken);
+
+      return res.status(200).json({
+        success: true,
+        message: "Token refreshed successfully",
+        data: newTokens,
+      });
+    } catch (error) {
+      console.error("Error updating token:", error);
+      const appError = handleServiceError(error as Error);
+
+      return res.status(appError.statusCode).json({
+        success: false,
+        message: appError.message,
+      });
+    }
+  }
 }
