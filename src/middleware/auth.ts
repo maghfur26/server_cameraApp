@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import prisma from "../config/dbconfig";
 import type { JWTPayload } from "../types/auth.types";
+import prisma from "../config/dbconfig";
 
 export class AuthMiddleware {
   static async verifyToken(req: Request, res: Response, next: NextFunction) {
@@ -116,6 +116,70 @@ export class AuthMiddleware {
       return res.status(500).json({
         success: false,
         message: "Authorization error",
+      });
+    }
+  }
+
+  static async verifyRefreshToken(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      // Get refresh token from body or cookie
+      const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
+
+      if (!refreshToken) {
+        res.status(401).json({
+          success: false,
+          message: "Refresh token is required",
+        });
+        return;
+      }
+
+      // Verify token
+      const decoded = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET || "refresh-secret"
+      ) as jwt.JwtPayload;
+
+      // Find user with this refresh token
+      const user = await prisma.user.findFirst({
+        where: {
+          id: decoded.id,
+          refreshToken: refreshToken,
+        },
+      });
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          message: "Invalid refresh token",
+        });
+        return;
+      }
+
+      // Attach user to request
+      req.user = {
+        id: user.id,
+        email: user.email,
+        userName: user.userName,
+        role: user.role,
+      };
+
+      next();
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        res.status(401).json({
+          success: false,
+          message: "Refresh token expired",
+        });
+        return;
+      }
+
+      res.status(401).json({
+        success: false,
+        message: "Invalid refresh token",
       });
     }
   }

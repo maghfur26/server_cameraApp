@@ -1,156 +1,159 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { UserService } from "../services/userService";
 import { handleServiceError } from "../utils/errorHandler";
 import type { CreateUser, LoginUser } from "../types/user.types";
 
 export class UserController {
-  static async getAllUsers(req: Request, res: Response) {
+  /**
+   * Get all users from the database
+   */
+  static async getAllUsers(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const users = await UserService.getAllUsers();
 
-      if (users.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "user not found",
-        });
-      }
-
-      return res.status(200).json({
+      res.status(200).json({
         success: true,
-        message: "user retrived successfully",
+        message: "Users retrieved successfully",
         data: users,
+        count: users.length,
       });
     } catch (error) {
-      console.log("Error fetching users:", error);
-      const appError = handleServiceError(error as Error);
-
-      return res.status(appError.statusCode).json({
-        success: false,
-        message: appError.message,
-      });
+      next(error);
     }
   }
 
-  static async createUser(req: Request, res: Response) {
+  /**
+   * Create a new user (admin only)
+   */
+  static async createUser(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const userData: CreateUser = req.body;
       const newUser = await UserService.createUser(userData);
 
-      return res.status(201).json({
+      res.status(201).json({
         success: true,
         message: "User created successfully",
         data: newUser,
       });
     } catch (error) {
-      console.error("Error creating user:", error);
-      const appError = handleServiceError(error as Error);
-
-      return res.status(appError.statusCode).json({
-        success: false,
-        message: appError.message,
-      });
+      next(error);
     }
   }
 
-  static async login(req: Request, res: Response) {
+  /**
+   * User login with email and password
+   */
+  static async login(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const userData: LoginUser = req.body;
       const result = await UserService.login(userData);
 
-      return res.status(200).json({
+      res.status(200).json({
         success: true,
-        message: "Login successfully",
+        message: "Login successful",
         data: result,
       });
     } catch (error) {
-      console.error("Error loggin:", error);
-      const appError = handleServiceError(error as Error);
-      return res.status(appError.statusCode).json({
-        success: false,
-        message: appError.message,
-      });
+      next(error);
     }
   }
 
-  static async logut(req: Request, res: Response) {
+  /**
+   * Logout user by clearing tokens
+   */
+  static async logout(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      if (!req.user) {
-        return res.status(401).json({
+      if (!req.user?.id) {
+        res.status(401).json({
           success: false,
-          message: "Authenticaion required",
+          message: "Authentication required",
         });
+        return;
       }
 
-      await UserService.logutUser(req.user.id);
+      await UserService.logoutUser(req.user.id);
 
-      return res.status(200).json({
+      res.status(200).json({
         success: true,
         message: "Logout successful",
       });
     } catch (error) {
-      console.error("Error during logout:", error);
-      const appError = handleServiceError(error as Error);
-
-      return res.status(appError.statusCode).json({
-        success: false,
-        message: appError.message,
-      });
+      next(error);
     }
   }
 
-  static async deleteUser(req: Request, res: Response) {
+  /**
+   * Delete user account
+   */
+  static async deleteUser(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      if (!req.user) {
-        return res.status(401).json({
+      if (!req.user?.id) {
+        res.status(401).json({
           success: false,
-          message: "Authenticaion required",
+          message: "Authentication required",
         });
+        return;
       }
 
-      const user = await UserService.deleteUser(req.user.id);
+      await UserService.deleteUser(req.user.id);
 
-      return res.status(200).json({
+      res.status(200).json({
         success: true,
         message: "User deleted successfully",
-        data: user,
       });
     } catch (error) {
-      console.error("Error deleting user:", error);
-      const appError = handleServiceError(error as Error);
-
-      return res.status(appError.statusCode).json({
-        success: false,
-        message: appError.message,
-      });
+      next(error);
     }
   }
 
-  static async updateToken(req: Request, res: Response) {
+  /**
+   * Refresh access token using refresh token
+   */
+  static async refreshToken(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      const { refreshToken } = req.body;
+      const userId = req.user?.id;
 
-      if (!refreshToken) {
-        return res.status(401).json({
+      if (!userId) {
+        res.status(401).json({
           success: false,
-          message: "Refresh token required",
+          message: "Authentication required",
         });
+        return;
       }
 
-      const newTokens = await UserService.updateToken(refreshToken);
+      const newTokens = await UserService.refreshToken(userId);
 
-      return res.status(200).json({
+      res.status(200).json({
         success: true,
         message: "Token refreshed successfully",
         data: newTokens,
       });
     } catch (error) {
-      console.error("Error updating token:", error);
-      const appError = handleServiceError(error as Error);
-
-      return res.status(appError.statusCode).json({
-        success: false,
-        message: appError.message,
-      });
+      next(error);
     }
   }
 }

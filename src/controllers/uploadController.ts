@@ -3,7 +3,8 @@ import path from "path";
 import { getOrCreateFolder, uploadFile } from "../helper/googeDrive";
 import fs from "fs";
 
-const ROOT_FOLDER = "19-EATxd3oIHvhDehcCZ1wAzKPVDBE9KD"; // ganti dengan folder root kamu
+// const ROOT_FOLDER = "19-EATxd3oIHvhDehcCZ1wAzKPVDBE9KD"; // ganti dengan folder root kamu
+const ROOT_FOLDER = "1U7SmzuTJ5pl02oFOqo7D4EUYrkLFVpZJ";
 
 export async function uploadPeserta(req: Request, res: Response) {
   try {
@@ -48,7 +49,6 @@ export async function uploadPeserta(req: Request, res: Response) {
       file: uploaded,
     });
   } catch (error: any) {
-    console.error("❌ Upload gagal:", error);
     res.status(500).json({ error: "Upload gagal", details: error.message });
   }
 }

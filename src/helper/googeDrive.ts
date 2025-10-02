@@ -9,7 +9,7 @@ const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
-// 🔑 Load token lama kalau ada
+// Load token lama kalau ada
 async function loadSavedCredentialsIfExist(): Promise<OAuth2Client | null> {
   try {
     const content = fs.readFileSync(TOKEN_PATH, "utf-8");
@@ -20,7 +20,7 @@ async function loadSavedCredentialsIfExist(): Promise<OAuth2Client | null> {
   }
 }
 
-// 🔑 Simpan token baru
+// Simpan token baru
 async function saveCredentials(client: OAuth2Client): Promise<void> {
   const content = fs.readFileSync(CREDENTIALS_PATH, "utf-8");
   const keys = JSON.parse(content);
@@ -34,7 +34,7 @@ async function saveCredentials(client: OAuth2Client): Promise<void> {
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(payload, null, 2));
 }
 
-// 🔑 OAuth2
+// OAuth2
 async function authorize(): Promise<OAuth2Client> {
   let client = await loadSavedCredentialsIfExist();
   if (client) return client;
@@ -48,13 +48,13 @@ async function authorize(): Promise<OAuth2Client> {
   return client;
 }
 
-// 🚀 Service Drive
+// Service Drive
 async function getDriveService(): Promise<drive_v3.Drive> {
   const auth = await authorize();
   return google.drive({ version: "v3", auth });
 }
 
-// 📁 Cari atau buat folder baru
+// cari atau buat folder baru
 export async function getOrCreateFolder(
   folderName: string,
   parentId?: string
@@ -94,7 +94,7 @@ export async function getOrCreateFolder(
   return folder.data.id!;
 }
 
-// ⬆️ Upload file
+// ⬆Upload file
 export async function uploadFile(
   filePath: string,
   fileName: string,
@@ -119,6 +119,6 @@ export async function uploadFile(
     fields: "id, name, webViewLink, webContentLink",
   });
 
-  console.log("✅ File berhasil diupload:", res.data);
+  console.log("File berhasil diupload:", res.data);
   return res.data;
 }

@@ -5,26 +5,41 @@ import { AuthMiddleware } from "../middleware/auth";
 
 const userRoutes = Router();
 
-// public routes
+/**
+ * Public routes - No authentication required
+ */
 userRoutes.post("/auth/login", validateLogin, UserController.login);
 userRoutes.get("/users", UserController.getAllUsers);
 
-// protected routes
+userRoutes.post(
+  "/auth/refresh-token",
+  AuthMiddleware.verifyRefreshToken,
+  UserController.refreshToken
+);
+
+/**
+ * Protected routes - Authentication required
+ */
 userRoutes.use(AuthMiddleware.verifyToken);
 
-// admin only
+// User routes
+userRoutes.post("/auth/logout", UserController.logout);
+userRoutes.delete("/users/me", UserController.deleteUser);
+
+/**
+ * Admin only routes
+ */
 userRoutes.post(
   "/create-user",
   AuthMiddleware.adminOnly,
   validateCreateUser,
   UserController.createUser
 );
-userRoutes.post(
-  "/delete-user",
+
+userRoutes.delete(
+  "/users/:id",
   AuthMiddleware.adminOnly,
   UserController.deleteUser
-)
-
-userRoutes.post("/auth/update-token", AuthMiddleware.adminOnly, UserController.updateToken);
+);
 
 export default userRoutes;
