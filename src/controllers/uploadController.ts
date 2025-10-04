@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import path from "path";
 import { getOrCreateFolder, uploadFile } from "../helper/googeDrive";
+import { PesertaService } from "../services/pesertaService";
 import fs from "fs";
+import { Peserta } from "../types/peserta.types";
 
 // const ROOT_FOLDER = "19-EATxd3oIHvhDehcCZ1wAzKPVDBE9KD"; // ganti dengan folder root kamu
 const ROOT_FOLDER = "1U7SmzuTJ5pl02oFOqo7D4EUYrkLFVpZJ";
@@ -36,6 +38,14 @@ export async function uploadPeserta(req: Request, res: Response) {
       dayFolderId,
       photo.mimetype
     );
+
+    // 4. Simpan data peserta ke database
+    const peserta: Peserta = {
+      fullName,
+      asalSekolah,
+      tglLahir: date,
+    };
+    await PesertaService.createPeserta(peserta);
 
     console.log("🌍 Link Drive:", uploaded.webViewLink);
 

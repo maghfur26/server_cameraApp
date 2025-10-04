@@ -1,6 +1,5 @@
 import prisma from "../config/dbconfig";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { generateToken } from "../utils/generateToken";
 import type {
   CreateUser,

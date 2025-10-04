@@ -11,9 +11,9 @@ datasource db {
 
 model Peserta {
   id       String   @id @default(uuid())
-  username String
-  sekolah  String
-  ttl      DateTime
+  fullName String
+  asalSekolah  String
+  tglLahir DateTime
 }
 
 model User {
