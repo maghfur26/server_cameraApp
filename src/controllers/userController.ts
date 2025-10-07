@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 import { UserService } from "../services/userService";
-import { handleServiceError } from "../utils/errorHandler";
 import type { CreateUser, LoginUser } from "../types/user.types";
 
 export class UserController {

@@ -5,7 +5,10 @@ import { URL } from "url";
 import open from "open";
 import { google } from "googleapis";
 
-const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
+const SCOPES = [
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/spreadsheets",
+];
 const TOKEN_PATH = "token.json";
 
 // Load credentials

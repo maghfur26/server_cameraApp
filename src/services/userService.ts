@@ -170,7 +170,7 @@ export class UserService {
    */
   static async refreshToken(userId: string): Promise<{
     accessToken: string;
-    refreshToken?: string; // Optional: jika ingin rotate refresh token
+    refreshToken?: string;
   }> {
     // Find user
     const user = await prisma.user.findUnique({
@@ -181,8 +181,7 @@ export class UserService {
       throw new Error("USER_NOT_FOUND");
     }
 
-    // Refresh token sudah divalidasi di middleware
-    // Generate new access token
+    // Generate new tokens
     const payload = {
       id: user.id,
       email: user.email,
@@ -192,21 +191,21 @@ export class UserService {
 
     const newAccessToken = await generateToken("accessToken", payload);
 
-    // OPTIONAL: Rotate refresh token untuk keamanan lebih
-    // const newRefreshToken = await generateToken("refreshToken", payload);
+    // RECOMMENDED: Rotate refresh token untuk keamanan lebih baik
+    const newRefreshToken = await generateToken("refreshToken", payload);
 
-    // Update access token in database
+    // Update both tokens in database
     await prisma.user.update({
       where: { id: user.id },
       data: {
         accessToken: newAccessToken,
-        // refreshToken: newRefreshToken // jika rotate
+        refreshToken: newRefreshToken,
       },
     });
 
     return {
       accessToken: newAccessToken,
-      // refreshToken: newRefreshToken // jika rotate
+      refreshToken: newRefreshToken,
     };
   }
 }

@@ -12,6 +12,18 @@ export async function uploadPeserta(req: Request, res: Response) {
   try {
     const photo = req.file;
     const { fullName, tglLahir, asalSekolah } = req.body;
+    const birthDate = new Date(tglLahir);
+    const today = new Date();
+
+    // Hitung usia akurat
+    let usia = today.getFullYear() - birthDate.getFullYear();
+    if (
+      today.getMonth() < birthDate.getMonth() ||
+      (today.getMonth() === birthDate.getMonth() &&
+        today.getDate() < birthDate.getDate())
+    ) {
+      usia--;
+    }
 
     if (!photo) {
       return res.status(400).json({ error: "File belum diupload" });
@@ -43,7 +55,8 @@ export async function uploadPeserta(req: Request, res: Response) {
     const peserta: Peserta = {
       fullName,
       asalSekolah,
-      tglLahir: date,
+      tglLahir: birthDate,
+      usia: usia.toString(),
     };
     await PesertaService.createPeserta(peserta);
 

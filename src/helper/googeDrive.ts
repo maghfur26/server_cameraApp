@@ -7,9 +7,13 @@ import { OAuth2Client } from "google-auth-library";
 
 const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 const TOKEN_PATH = path.join(process.cwd(), "token.json");
-const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
-// Load token lama kalau ada
+const SCOPES = [
+  "https://www.googleapis.com/auth/drive",
+  // atau gunakan ini jika hanya perlu akses terbatas:
+  // "https://www.googleapis.com/auth/drive.file"
+];
+
 async function loadSavedCredentialsIfExist(): Promise<OAuth2Client | null> {
   try {
     const content = fs.readFileSync(TOKEN_PATH, "utf-8");
@@ -20,7 +24,6 @@ async function loadSavedCredentialsIfExist(): Promise<OAuth2Client | null> {
   }
 }
 
-// Simpan token baru
 async function saveCredentials(client: OAuth2Client): Promise<void> {
   const content = fs.readFileSync(CREDENTIALS_PATH, "utf-8");
   const keys = JSON.parse(content);
@@ -34,7 +37,6 @@ async function saveCredentials(client: OAuth2Client): Promise<void> {
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(payload, null, 2));
 }
 
-// OAuth2
 async function authorize(): Promise<OAuth2Client> {
   let client = await loadSavedCredentialsIfExist();
   if (client) return client;
@@ -48,53 +50,81 @@ async function authorize(): Promise<OAuth2Client> {
   return client;
 }
 
-// Service Drive
 async function getDriveService(): Promise<drive_v3.Drive> {
   const auth = await authorize();
   return google.drive({ version: "v3", auth });
 }
 
-// cari atau buat folder baru
 export async function getOrCreateFolder(
   folderName: string,
   parentId?: string
 ): Promise<string> {
   const drive = await getDriveService();
 
+  // Escape single quotes di nama folder untuk menghindari error query
+  const escapedFolderName = folderName.replace(/'/g, "\\'");
+
+  // Query untuk mencari folder
   const query = [
-    `name='${folderName}'`,
+    `name='${escapedFolderName}'`,
     "mimeType='application/vnd.google-apps.folder'",
     "trashed=false",
   ];
-  if (parentId) query.push(`'${parentId}' in parents`);
 
-  const res = await drive.files.list({
-    q: query.join(" and "),
-    fields: "files(id, name)",
-    spaces: "drive",
-  });
-
-  if (res.data.files && res.data.files.length > 0 && res.data.files[0]?.id) {
-    console.log(`✅ Folder ditemukan: ${res.data.files[0]?.id}`);
-    return res.data.files[0]?.id!;
+  if (parentId) {
+    query.push(`'${parentId}' in parents`);
   }
 
-  const fileMetadata: drive_v3.Schema$File = {
-    name: folderName,
-    mimeType: "application/vnd.google-apps.folder",
-    parents: parentId ? [parentId] : null,
-  };
+  console.log(`🔍 Mencari folder: ${folderName}`);
+  console.log(`📋 Query: ${query.join(" and ")}`);
 
-  const folder = await drive.files.create({
-    requestBody: fileMetadata,
-    fields: "id",
-  });
+  try {
+    const res = await drive.files.list({
+      q: query.join(" and "),
+      fields: "files(id, name, parents)",
+      spaces: "drive",
+      // ✅ Tambahkan ini untuk memastikan pencarian lebih akurat
+      pageSize: 10,
+    });
 
-  console.log(`📁 Folder baru dibuat: ${folder.data.id}`);
-  return folder.data.id!;
+    // Cek apakah folder ditemukan
+    if (res.data.files && res.data.files.length > 0) {
+      const folder = res.data.files[0];
+      if (!folder?.id) {
+        throw new Error(`Folder ditemukan tapi tidak memiliki ID`);
+      }
+      console.log(`✅ Folder ditemukan: ${folder.name} (ID: ${folder.id})`);
+      return folder.id;
+    }
+
+    // Jika tidak ditemukan, buat folder baru
+    console.log(`📁 Folder "${folderName}" tidak ditemukan, membuat baru...`);
+
+    const fileMetadata: drive_v3.Schema$File = {
+      name: folderName,
+      mimeType: "application/vnd.google-apps.folder",
+      ...(parentId && { parents: [parentId] }),
+    };
+
+    const folder = await drive.files.create({
+      requestBody: fileMetadata,
+      fields: "id, name",
+    });
+
+    console.log(
+      `✅ Folder baru dibuat: ${folder.data.name} (ID: ${folder.data.id})`
+    );
+    return folder.data.id!;
+  } catch (error: any) {
+    console.error(
+      `❌ Error saat mencari/membuat folder "${folderName}":`,
+      error.message
+    );
+    throw error;
+  }
 }
 
-// ⬆Upload file
+// Upload file
 export async function uploadFile(
   filePath: string,
   fileName: string,
@@ -119,6 +149,6 @@ export async function uploadFile(
     fields: "id, name, webViewLink, webContentLink",
   });
 
-  console.log("File berhasil diupload:", res.data);
+  console.log("✅ File berhasil diupload:", res.data.name);
   return res.data;
 }
