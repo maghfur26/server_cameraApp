@@ -33,16 +33,17 @@ export class PesertaService {
     });
 
     // Transform data untuk include bulan dan tanggal
-    return peserta.map((p) => {
-      const date = new Date(p.tglLahir);
+    return peserta.map((peserta) => {
+      const date = new Date(peserta.tglLahir);
       const bulan = date.toLocaleString("id-ID", { month: "long" });
       const tanggal = date.getDate().toString().padStart(2, "0");
 
       return {
-        id: p.id,
-        fullName: p.fullName,
-        asalSekolah: p.asalSekolah,
-        tglLahir: p.tglLahir,
+        id: peserta.id,
+        fullName: peserta.fullName,
+        asalSekolah: peserta.asalSekolah,
+        tglLahir: peserta.tglLahir,
+        usia: peserta.usia,
         bulan,
         tanggal,
       };

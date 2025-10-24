@@ -65,7 +65,7 @@ export async function uploadPeserta(req: Request, res: Response) {
     // Hapus file yang telah diupload
     fs.unlinkSync(photo.path);
 
-    res.json({
+    res.status(201).json({
       message: "Upload berhasil",
       folder_bulan: month,
       folder_id: dayFolderId,

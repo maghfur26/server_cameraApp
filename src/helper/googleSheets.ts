@@ -43,6 +43,7 @@ interface PesertaData {
   tglLahir: Date;
   bulan: string;
   tanggal: string;
+  usia: string;
 }
 
 /**
@@ -95,7 +96,7 @@ export async function createPesertaSpreadsheet(
 
   // Siapkan data untuk spreadsheet
   const values: any[][] = [
-    ["No", "Nama Lengkap", "Asal Sekolah", "Tanggal Lahir", "Bulan", "Tanggal"],
+    ["No", "Nama Lengkap", "Asal Sekolah", "Tanggal Lahir", "Bulan", "Usia"],
   ];
 
   // Tambahkan data peserta
@@ -106,7 +107,7 @@ export async function createPesertaSpreadsheet(
       peserta.asalSekolah,
       new Date(peserta.tglLahir).toLocaleDateString("id-ID"),
       peserta.bulan,
-      peserta.tanggal,
+      peserta.usia,
     ]);
   });
 
@@ -236,7 +237,7 @@ export async function createPesertaSpreadsheetByMonth(
   // Populate each sheet
   for (const [bulan, pesertaList] of Object.entries(dataByMonth)) {
     const values: any[][] = [
-      ["No", "Nama Lengkap", "Asal Sekolah", "Tanggal Lahir", "Tanggal"],
+      ["No", "Nama Lengkap", "Asal Sekolah", "Tanggal Lahir", "Usia"],
     ];
 
     pesertaList.forEach((peserta, index) => {
@@ -245,7 +246,7 @@ export async function createPesertaSpreadsheetByMonth(
         peserta.fullName,
         peserta.asalSekolah,
         new Date(peserta.tglLahir).toLocaleDateString("id-ID"),
-        peserta.tanggal,
+        peserta.usia,
       ]);
     });
 

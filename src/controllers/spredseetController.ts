@@ -61,8 +61,6 @@ export class SpreadsheetController {
     try {
       const { title = "Data Peserta" } = req.body;
 
-      console.log(`📊 Creating spreadsheet: ${title}`);
-
       // Get sorted data
       const pesertaData = await PesertaService.getAllPesertaSorted();
 
@@ -72,8 +70,6 @@ export class SpreadsheetController {
           message: "Tidak ada data peserta untuk diexport",
         });
       }
-
-      console.log(`📋 Found ${pesertaData.length} peserta to export`);
 
       // Create spreadsheet
       const result = await createPesertaSpreadsheet(title, pesertaData);
@@ -107,8 +103,6 @@ export class SpreadsheetController {
     try {
       const { title = "Data Peserta Per Bulan" } = req.body;
 
-      console.log(`📊 Creating spreadsheet by month: ${title}`);
-
       // Get sorted data
       const pesertaData = await PesertaService.getAllPesertaSorted();
 
@@ -118,8 +112,6 @@ export class SpreadsheetController {
           message: "Tidak ada data peserta untuk diexport",
         });
       }
-
-      console.log(`📋 Found ${pesertaData.length} peserta to export`);
 
       // Create spreadsheet by month
       const result = await createPesertaSpreadsheetByMonth(title, pesertaData);
@@ -168,8 +160,6 @@ export class SpreadsheetController {
         });
       }
 
-      console.log(`📥 Downloading Excel for spreadsheet: ${spreadsheetId}`);
-
       const buffer = await exportSpreadsheetAsExcel(spreadsheetId);
 
       // Set headers for download
@@ -184,7 +174,6 @@ export class SpreadsheetController {
       );
       res.setHeader("Content-Length", buffer.length);
 
-      console.log(`✅ Excel downloaded: ${filename}`);
       res.send(buffer);
     } catch (error: any) {
       console.error("❌ Error downloading Excel:", error);
@@ -217,8 +206,6 @@ export class SpreadsheetController {
         });
       }
 
-      console.log(`📥 Downloading PDF for spreadsheet: ${spreadsheetId}`);
-
       const buffer = await exportSpreadsheetAsPDF(spreadsheetId);
 
       // Set headers for download
@@ -230,7 +217,6 @@ export class SpreadsheetController {
       );
       res.setHeader("Content-Length", buffer.length);
 
-      console.log(`✅ PDF downloaded: ${filename}`);
       res.send(buffer);
     } catch (error: any) {
       console.error("❌ Error downloading PDF:", error);
@@ -253,15 +239,38 @@ export class SpreadsheetController {
    * Buat spreadsheet dan langsung download sebagai Excel (one-step)
    * Body: { title?: string, groupByMonth?: boolean }
    */
+  // Tambahkan method ini di SpreadsheetController
+
+  /**
+   * POST /api/spreadsheet/export/excel
+   * Buat spreadsheet dan langsung download sebagai Excel (one-step)
+   * Body: { title?: string, groupByMonth?: boolean, month?: string }
+   */
   static async createAndDownloadExcel(req: Request, res: Response) {
     try {
-      const { title = "Data Peserta", groupByMonth = false } = req.body;
+      const {
+        title = "Data Peserta",
+        groupByMonth = false,
+        month, // Parameter baru untuk filter bulan
+      } = req.body;
 
-      console.log(`📊 Creating and downloading Excel: ${title}`);
-      console.log(`📋 Group by month: ${groupByMonth}`);
+      let pesertaData;
 
-      // Get sorted data
-      const pesertaData = await PesertaService.getAllPesertaSorted();
+      // Jika ada filter bulan spesifik
+      if (month && month !== "semua") {
+        const grouped = await PesertaService.getPesertaGroupedByMonth();
+        pesertaData = grouped[month] || [];
+
+        if (pesertaData.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: `Tidak ada data peserta untuk bulan ${month}`,
+          });
+        }
+      } else {
+        // Get all data
+        pesertaData = await PesertaService.getAllPesertaSorted();
+      }
 
       if (pesertaData.length === 0) {
         return res.status(404).json({
@@ -270,21 +279,26 @@ export class SpreadsheetController {
         });
       }
 
-      console.log(`📋 Found ${pesertaData.length} peserta to export`);
+      // Update title jika ada filter bulan
+      const finalTitle =
+        month && month !== "semua" ? `${title} - ${month}` : title;
 
       // Create spreadsheet
-      const result = groupByMonth
-        ? await createPesertaSpreadsheetByMonth(title, pesertaData)
-        : await createPesertaSpreadsheet(title, pesertaData);
+      // Jika filter bulan spesifik, gunakan single sheet
+      // Jika "semua" atau groupByMonth true, gunakan multiple sheets
+      const shouldGroupByMonth = (month === "semua" || !month) && groupByMonth;
 
-      console.log(`✅ Spreadsheet created: ${result.spreadsheetId}`);
-      console.log(`📥 Exporting to Excel...`);
+      const result = shouldGroupByMonth
+        ? await createPesertaSpreadsheetByMonth(finalTitle, pesertaData)
+        : await createPesertaSpreadsheet(finalTitle, pesertaData);
 
       // Export to Excel
       const buffer = await exportSpreadsheetAsExcel(result.spreadsheetId);
 
       // Set headers for download
-      const filename = `data-peserta-${Date.now()}.xlsx`;
+      const monthLabel = month && month !== "semua" ? month : "all";
+      const filename = `data-peserta-${monthLabel}-${Date.now()}.xlsx`;
+
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -295,12 +309,10 @@ export class SpreadsheetController {
       );
       res.setHeader("Content-Length", buffer.length);
 
-      console.log(`✅ Excel ready for download: ${filename}`);
       res.send(buffer);
     } catch (error: any) {
       console.error("❌ Error creating and downloading Excel:", error);
 
-      // Check if headers already sent
       if (res.headersSent) {
         return;
       }
@@ -316,17 +328,33 @@ export class SpreadsheetController {
   /**
    * POST /api/spreadsheet/export/pdf
    * Buat spreadsheet dan langsung download sebagai PDF (one-step)
-   * Body: { title?: string, groupByMonth?: boolean }
+   * Body: { title?: string, groupByMonth?: boolean, month?: string }
    */
   static async createAndDownloadPDF(req: Request, res: Response) {
     try {
-      const { title = "Data Peserta", groupByMonth = false } = req.body;
+      const {
+        title = "Data Peserta",
+        groupByMonth = false,
+        month, // Parameter baru untuk filter bulan
+      } = req.body;
 
-      console.log(`📊 Creating and downloading PDF: ${title}`);
-      console.log(`📋 Group by month: ${groupByMonth}`);
+      let pesertaData;
 
-      // Get sorted data
-      const pesertaData = await PesertaService.getAllPesertaSorted();
+      // Jika ada filter bulan spesifik
+      if (month && month !== "semua") {
+        const grouped = await PesertaService.getPesertaGroupedByMonth();
+        pesertaData = grouped[month] || [];
+
+        if (pesertaData.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: `Tidak ada data peserta untuk bulan ${month}`,
+          });
+        }
+      } else {
+        // Get all data
+        pesertaData = await PesertaService.getAllPesertaSorted();
+      }
 
       if (pesertaData.length === 0) {
         return res.status(404).json({
@@ -335,21 +363,24 @@ export class SpreadsheetController {
         });
       }
 
-      console.log(`📋 Found ${pesertaData.length} peserta to export`);
+      // Update title jika ada filter bulan
+      const finalTitle =
+        month && month !== "semua" ? `${title} - ${month}` : title;
 
       // Create spreadsheet
-      const result = groupByMonth
-        ? await createPesertaSpreadsheetByMonth(title, pesertaData)
-        : await createPesertaSpreadsheet(title, pesertaData);
+      const shouldGroupByMonth = (month === "semua" || !month) && groupByMonth;
 
-      console.log(`✅ Spreadsheet created: ${result.spreadsheetId}`);
-      console.log(`📥 Exporting to PDF...`);
+      const result = shouldGroupByMonth
+        ? await createPesertaSpreadsheetByMonth(finalTitle, pesertaData)
+        : await createPesertaSpreadsheet(finalTitle, pesertaData);
 
       // Export to PDF
       const buffer = await exportSpreadsheetAsPDF(result.spreadsheetId);
 
       // Set headers for download
-      const filename = `data-peserta-${Date.now()}.pdf`;
+      const monthLabel = month && month !== "semua" ? month : "all";
+      const filename = `data-peserta-${monthLabel}-${Date.now()}.pdf`;
+
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
@@ -357,12 +388,10 @@ export class SpreadsheetController {
       );
       res.setHeader("Content-Length", buffer.length);
 
-      console.log(`✅ PDF ready for download: ${filename}`);
       res.send(buffer);
     } catch (error: any) {
       console.error("❌ Error creating and downloading PDF:", error);
 
-      // Check if headers already sent
       if (res.headersSent) {
         return;
       }
