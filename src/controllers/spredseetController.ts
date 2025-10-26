@@ -1,4 +1,3 @@
-// src/controllers/spreadsheetController.ts
 import { Request, Response } from "express";
 import { PesertaService } from "../services/pesertaService";
 import {
@@ -50,6 +49,10 @@ export class SpreadsheetController {
         message: error.message,
       });
     }
+  }
+
+  static async deletePeserta(req: Request, res: Response) {
+    
   }
 
   /**

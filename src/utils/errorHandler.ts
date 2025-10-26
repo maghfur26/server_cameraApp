@@ -19,6 +19,8 @@ export const handleServiceError = (error: Error) => {
       return new AppError("User not found", 404);
     case "REFRESH_TOKEN_NOT_FOUND":
       return new AppError("Refresh token not found", 404);
+    case "ID_NOT_FOUND":
+      return new AppError("ID not found", 404);
     default:
       return new AppError("internal server error", 500);
   }
