@@ -3,7 +3,7 @@ import cors from "cors";
 const isProduction = process.env.NODE_ENV === "production";
 
 const origin = isProduction
-  ? "https://unimpressive-johnathan-amatorially.ngrok-f.app"
+  ? "https://dasboard-id-sync-cam.vercel.app"
   : "http://localhost:5173";
 
 const corsConfig = cors({
@@ -16,6 +16,7 @@ const corsConfig = cors({
     "X-Requested-With",
     "Accept",
     "Origin",
+    "ngrok-skip-browser-warning"
   ],
   exposedHeaders: ["Content-disposition"], // for download file
 });

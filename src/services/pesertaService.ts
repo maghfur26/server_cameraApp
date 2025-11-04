@@ -244,4 +244,28 @@ export class PesertaService {
 
     return { message: "Peserta berhasil dihapus" };
   }
+
+  static async deleteAllPeserta() {
+    await prisma.peserta.deleteMany();
+
+    return { message: "Semua peserta berhasil dihapus" };
+  }
+
+  static async deletePesertaByMonth(month: number) {
+    if (month < 1 || month > 12) {
+      throw new Error("Invalid month");
+    }
+
+    const result =
+      await prisma.$executeRaw`DELETE FROM "Peserta" WHERE EXTRACT(MONTH FROM "tglLahir") = ${month}`;
+
+    const bulanName = new Date(2025, month - 1, 1).toLocaleString("id-ID", {
+      month: "long",
+    });
+
+    return {
+      message: `Semua peserta bulan ${bulanName} berhasil dihapus`,
+      deletedCount: result
+    }
+  }
 }
