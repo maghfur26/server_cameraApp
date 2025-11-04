@@ -1,99 +1,171 @@
-import prisma from "../config/dbconfig.js";
-import bcrypt from "bcrypt";
-import { generateToken } from "../utils/generateToken.js";
-export const getUsers = async (req, res) => {
-    try {
-        const users = await prisma.user.findMany({
-            select: {
-                id: true,
-                userName: true,
-                email: true,
-                role: true,
-            },
-        });
-        if (users.length === 0) {
-            return res.status(404).json({ message: "No users found" });
-        }
-        return res.status(200).json({
-            message: "Users retrieved successfully",
-            data: users,
-        });
-    }
-    catch (error) {
-        console.error("Error fetching users:", error);
-        return res.status(500).json({ message: "Internal server error" });
-    }
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-export const createUser = async (req, res) => {
-    try {
-        const { userName, email, password, role } = req.body;
-        const saltRounds = parseInt(process.env.SALT_ROUNDS || "12");
-        const salt = await bcrypt.genSalt(saltRounds);
-        // Check existing user
-        const existingUser = await prisma.user.findUnique({
-            where: { email },
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UserService = void 0;
+const dbconfig_1 = __importDefault(require("../config/dbconfig"));
+const bcrypt_1 = __importDefault(require("bcrypt"));
+const generateToken_1 = require("../utils/generateToken");
+class UserService {
+    /**
+     * Get all users with minimal information
+     */
+    static async getAllUsers() {
+        const users = await dbconfig_1.default.user.findMany({
+            select: this.USER_SELECT,
         });
-        if (existingUser) {
-            return res.status(409).json({ message: "User already exists" });
-        }
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, salt);
-        // Create user
-        const newUser = await prisma.user.create({
-            data: {
-                userName,
-                email,
-                password: hashedPassword,
-                role,
-            },
-        });
-        return res.status(201).json({
-            message: "User created successfully",
-        });
+        return users;
     }
-    catch (error) {
-        console.error("Error creating user:", error);
-        return res.status(500).json({ message: "Internal server error" });
-    }
-};
-export const loginUser = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await prisma.user.findUnique({
-            where: { email },
+    /**
+     * Get single user by ID
+     */
+    static async getUser(userId) {
+        const user = await dbconfig_1.default.user.findUnique({
+            where: { id: userId },
+            select: this.USER_SELECT,
         });
         if (!user) {
-            return res.status(401).json({ message: "Invalid credentials" });
+            throw new Error("USER_NOT_FOUND");
         }
+        return user;
+    }
+    /**
+     * Create a new user with hashed password
+     */
+    static async createUser(userData) {
+        // Check if user already exists
+        const existingUser = await dbconfig_1.default.user.findUnique({
+            where: { email: userData.email },
+        });
+        if (existingUser) {
+            throw new Error("USER_ALREADY_EXISTING");
+        }
+        // Hash password
+        const hashedPassword = await bcrypt_1.default.hash(userData.password, this.SALT_ROUNDS);
+        // Create user
+        const newUser = await dbconfig_1.default.user.create({
+            data: {
+                userName: userData.userName,
+                email: userData.email,
+                password: hashedPassword,
+                role: userData.role?.toUpperCase(),
+            },
+            select: this.USER_SELECT,
+        });
+        return newUser;
+    }
+    /**
+     * Authenticate user and generate tokens
+     */
+    static async login(loginData) {
+        // Find user by email
+        const user = await dbconfig_1.default.user.findUnique({
+            where: { email: loginData.email },
+        });
+        if (!user) {
+            throw new Error("USER_NOT_FOUND");
+        }
+        // Verify password
+        const isPasswordValid = await bcrypt_1.default.compare(loginData.password, user.password);
+        if (!isPasswordValid) {
+            throw new Error("INVALID_CREDENTIALS");
+        }
+        // Generate tokens
         const payload = {
             id: user.id,
-            email,
+            email: user.email,
             userName: user.userName,
             role: user.role,
         };
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: "Invalid credentials" });
-        }
-        const refreshToken = await generateToken("refreshToken", payload);
-        const accessToken = await generateToken("accessToken", payload);
-        await prisma.user.update({
-            where: {
-                email,
-            },
+        const accessToken = await (0, generateToken_1.generateToken)("accessToken", payload);
+        const refreshToken = await (0, generateToken_1.generateToken)("refreshToken", payload);
+        // Store tokens in database
+        await dbconfig_1.default.user.update({
+            where: { id: user.id },
             data: {
                 accessToken,
                 refreshToken,
             },
         });
-        return res.status(200).json({
-            message: "login success",
-            token: accessToken,
+        return {
+            user: {
+                id: user.id,
+                userName: user.userName,
+                email: user.email,
+                role: user.role,
+            },
+            accessToken,
+            refreshToken,
+        };
+    }
+    /**
+     * Logout user by clearing tokens
+     */
+    static async logoutUser(userId) {
+        await dbconfig_1.default.user.update({
+            where: { id: userId },
+            data: {
+                accessToken: null,
+                refreshToken: null,
+            },
         });
     }
-    catch (error) {
-        console.error("Error during login:", error);
-        return res.status(500).json({ message: "Internal server error" });
+    /**
+     * Delete user account
+     */
+    static async deleteUser(userId) {
+        const user = await dbconfig_1.default.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            throw new Error("USER_NOT_FOUND");
+        }
+        await dbconfig_1.default.user.delete({
+            where: { id: userId },
+        });
     }
+    /**
+     * Refresh access token using valid refresh token
+     */
+    static async refreshToken(userId) {
+        // Find user
+        const user = await dbconfig_1.default.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            throw new Error("USER_NOT_FOUND");
+        }
+        // Generate new tokens
+        const payload = {
+            id: user.id,
+            email: user.email,
+            userName: user.userName,
+            role: user.role,
+        };
+        const newAccessToken = await (0, generateToken_1.generateToken)("accessToken", payload);
+        // RECOMMENDED: Rotate refresh token untuk keamanan lebih baik
+        const newRefreshToken = await (0, generateToken_1.generateToken)("refreshToken", payload);
+        // Update both tokens in database
+        await dbconfig_1.default.user.update({
+            where: { id: user.id },
+            data: {
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+            },
+        });
+        return {
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+        };
+    }
+}
+exports.UserService = UserService;
+UserService.SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS || "12");
+UserService.USER_SELECT = {
+    id: true,
+    userName: true,
+    email: true,
+    role: true,
 };
 //# sourceMappingURL=userService.js.map

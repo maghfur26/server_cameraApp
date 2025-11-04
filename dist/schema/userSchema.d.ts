@@ -1,2 +1,4 @@
-export declare const userSchema: any;
+import Joi from "joi";
+export declare const userSchema: Joi.ObjectSchema<any>;
+export declare const loginSchema: Joi.ObjectSchema<any>;
 //# sourceMappingURL=userSchema.d.ts.map

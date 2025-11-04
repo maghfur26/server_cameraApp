@@ -1,1 +1,1 @@
-{"version":3,"file":"dbconfig.d.ts","sourceRoot":"","sources":["../../src/config/dbconfig.ts"],"names":[],"mappings":"AAEA,QAAA,MAAM,MAAM,KAAqB,CAAC;AAElC,eAAe,MAAM,CAAC"}
+{"version":3,"file":"dbconfig.d.ts","sourceRoot":"","sources":["../../src/config/dbconfig.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,YAAY,EAAE,MAAM,2BAA2B,CAAC;AAEzD,QAAA,MAAM,MAAM,gJAAqB,CAAC;AAElC,eAAe,MAAM,CAAC"}

@@ -1,3 +1,4 @@
-declare const prisma: any;
+import { PrismaClient } from "../generated/prisma/index";
+declare const prisma: PrismaClient<import("../generated/prisma/index").Prisma.PrismaClientOptions, never, import("../generated/prisma/runtime/library").DefaultArgs>;
 export default prisma;
 //# sourceMappingURL=dbconfig.d.ts.map
